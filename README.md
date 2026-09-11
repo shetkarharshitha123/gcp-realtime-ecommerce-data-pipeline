@@ -235,38 +235,38 @@ These checks help identify missing records, duplicates, invalid data, reconcilia
 ## Repository Structure
 
 ```text
-gcp-realtime-ecommerce-data-pipeline/
+📦 gcp-realtime-ecommerce-data-pipeline/
 │
-├── README.md
-├── LICENSE
-├── .gitignore
+├── 📄 README.md
+├── 📄 LICENSE
+├── 📄 .gitignore
 │
-├── architecture/
-│   └── gcp-realtime-ecommerce-pipeline-architecture.png
+├── 📁 architecture/
+│   └── 🖼️ gcp-realtime-ecommerce-pipeline-architecture.png
 │
-├── docs/
-│   ├── 01-architecture-and-implementation.docx
-│   ├── 02-code-documentation.docx
-│   └── 03-sanity-checks.docx
+├── 📁 docs/
+│   ├── 📄 01-architecture-and-implementation.docx
+│   ├── 📄 02-code-documentation.docx
+│   └── 📄 03-sanity-checks.docx
 │
-├── src/
+├── 📁 src/
 │   │
-│   ├── publisher/
-│   │   └── publisher.py
+│   ├── 📁 publisher/
+│   │   └── 🐍 publisher.py
 │   │
-│   ├── pyspark/
-│   │   └── clean_ecom.py
+│   ├── 📁 pyspark/
+│   │   └── 🐍 clean_ecom.py
 │   │
-│   └── airflow/
-│       └── ecom_pipeline_dag.py
+│   └── 📁 airflow/
+│       └── 🐍 ecom_pipeline_dag.py
 │
-├── sql/
-│   ├── spanner_schema.sql
-│   ├── bigquery_aggregation.sql
-│   └── verification_queries.sql
+├── 📁 sql/
+│   ├── 🗄️ spanner_schema.sql
+│   ├── 🗄️ bigquery_aggregation.sql
+│   └── 🗄️ verification_queries.sql
 │
-└── tests/
-    └── sanity_checks.sql
+└── 📁 tests/
+    └── 🧪 sanity_checks.sql   
 ```
 
 ---
