@@ -1,96 +1,144 @@
-# gcp-realtime-ecommerce-data-pipeline
-Production-style GCP streaming data pipeline implementing Bronze/Silver/Gold architecture with Pub/Sub, GCS, PySpark on Dataproc Serverless, Cloud Spanner, BigQuery federated queries, and Airflow orchestration.
+# E-Commerce Real-Time GCP Data Pipeline
 
-# GCP Real-Time E-Commerce Data Pipeline
+End-to-end e-commerce data pipeline built using Google Cloud Platform (GCP).
 
-An end-to-end streaming data engineering pipeline built on Google Cloud Platform.
+> This project uses **Dataproc Serverless with PySpark** for data transformation and does not use Google Cloud Dataflow.
+
+## GCP Services Used
+
+* **Google Cloud Pub/Sub** — streaming order ingestion
+* **Google Cloud Storage (GCS)** — Bronze and Silver data layers
+* **Dataproc Serverless** — PySpark transformation
+* **Cloud Spanner** — operational data storage
+* **BigQuery** — Gold analytics and federated querying
+* **BigQuery Spanner External Connection** — Spanner-to-BigQuery federation
+* **Cloud Composer / Apache Airflow** — workflow orchestration
 
 ## Architecture
 
-Pub/Sub
-   ↓
-Cloud Storage - Bronze
-   ↓
-Dataproc Serverless / PySpark
-   ↓
-Cloud Storage - Silver
-   ↓
-Cloud Spanner
-   ↓
-BigQuery Federated Query
-   ↓
-Gold Analytics
-
+```text
+E-Commerce Events
+       ↓
+Python Publisher
+       ↓
+Google Cloud Pub/Sub
+       ↓
+GCS Bronze - Raw JSON
+       ↓
 Cloud Composer / Airflow
-        ↓
-Orchestrates the pipeline
-
-## Technologies
-
-- Google Cloud Pub/Sub
-- Google Cloud Storage
-- Dataproc Serverless
-- PySpark
-- Cloud Spanner
-- BigQuery
-- BigQuery EXTERNAL_QUERY
-- Cloud Composer
-- Apache Airflow
-- Python
-- SQL
-
-## Project Overview
-
-This project implements an automated streaming e-commerce data pipeline
-using a Bronze/Silver/Gold architecture.
-
-Raw e-commerce order events are published to Google Cloud Pub/Sub
-and delivered to Cloud Storage.
-
-Dataproc Serverless executes PySpark transformations to clean,
-deduplicate and transform the raw data.
-
-The processed data is stored in Parquet format in the Silver layer
-and transactional records are written to Cloud Spanner.
-
-BigQuery uses a federated connection to Cloud Spanner to generate
-analytical summaries in the Gold layer.
-
-Cloud Composer / Apache Airflow orchestrates the processing workflow.
+       ↓
+Dataproc Serverless + PySpark
+       ↓
+   ┌───┴────────────┐
+   ↓                ↓
+GCS Silver      Cloud Spanner
+  Parquet        Transactions
+                    ↓
+                 BigQuery
+              EXTERNAL_QUERY
+                    ↓
+              Gold Analytics
+```
 
 ## Pipeline Flow
 
-1. E-commerce events are generated
-2. Events are published to Pub/Sub
-3. Pub/Sub delivers raw JSON to GCS Bronze
-4. Airflow triggers Dataproc Serverless
-5. PySpark cleans and deduplicates data
-6. Clean data is stored as Parquet
-7. Transactional data is written to Cloud Spanner
-8. BigQuery queries Spanner using EXTERNAL_QUERY
-9. Aggregated metrics are written to the Gold layer
-10. Sanity checks validate the pipeline
+1. Generate e-commerce order events using Python.
+2. Publish events to Google Cloud Pub/Sub.
+3. Store raw JSON data in the GCS Bronze layer.
+4. Airflow triggers the Dataproc Serverless PySpark job.
+5. PySpark cleans, transforms, and deduplicates the data.
+6. Store processed data as Parquet in the GCS Silver layer.
+7. Write transactional data to Cloud Spanner.
+8. BigQuery reads Cloud Spanner using `EXTERNAL_QUERY`.
+9. Generate product-level analytics in the Gold layer.
+10. Run sanity checks to validate the pipeline.
 
-## Data Quality
+## Data Quality Checks
 
-The project includes sanity checks for:
+The project includes checks for:
 
-- Data volume
-- Completeness
-- Schema integrity
-- Data types
-- Deduplication
-- Idempotency
-- Business reconciliation
-- Data freshness
-- Cloud Spanner connectivity
-- BigQuery federated queries
+* Data volume
+* Data completeness
+* Schema integrity
+* Data types
+* Deduplication
+* Idempotency
+* Business reconciliation
+* Data freshness
+* Cloud Spanner validation
+* BigQuery federated query validation
 
 ## Repository Structure
 
 ```text
-docs/       → Project documentation
-src/        → Python, PySpark and Airflow code
-sql/        → SQL scripts
-tests/      → Data pipeline sanity checks
-architecture/ → Architecture diagrams
+gcp-realtime-ecommerce-data-pipeline/
+│
+├── README.md
+├── LICENSE
+├── .gitignore
+│
+├── architecture/
+│   └── gcp-realtime-ecommerce-pipeline-architecture.png
+│
+├── docs/
+│   ├── 01-architecture-and-implementation.docx
+│   ├── 02-code-documentation.docx
+│   └── 03-sanity-checks.docx
+│
+├── src/
+│   ├── publisher/
+│   │   └── publisher.py
+│   ├── pyspark/
+│   │   └── clean_ecom.py
+│   └── airflow/
+│       └── ecom_pipeline_dag.py
+│
+├── sql/
+│   ├── spanner_schema.sql
+│   ├── bigquery_aggregation.sql
+│   └── verification_queries.sql
+│
+└── tests/
+    └── sanity_checks.sql
+```
+
+## Project Execution Order
+
+1. Set up the required GCP services and IAM permissions.
+2. Configure Pub/Sub and GCS Bronze storage.
+3. Create the Cloud Spanner database and table.
+4. Run the Python publisher.
+5. Deploy and run the PySpark transformation.
+6. Configure Cloud Composer and deploy the Airflow DAG.
+7. Configure the BigQuery-Spanner external connection.
+8. Run the BigQuery aggregation.
+9. Run the sanity checks.
+
+## Project Configuration
+
+The values used in the project documentation are:
+
+```text
+GCP Project ID       : snappy-mapper-498509-e0
+GCS Bucket            : pub-sub-dag-rawdata
+Pub/Sub Topic         : ecom-orders-topic
+Spanner Instance      : ecom-spanner-instance
+Spanner Database      : ecom-db
+BigQuery Dataset      : ecom_analytics2
+Spanner Connection    : spanner-ecom-conn
+Composer Environment  : ecom-composer-env
+```
+
+> **Note:** These values are based on the project documentation and represent the POC environment. If publishing this repository publicly, replace environment-specific values with placeholders and do not commit credentials, service-account keys, API keys, or passwords.
+
+## Documentation
+
+Detailed project documentation is available in the `docs/` folder:
+
+* **Architecture & Implementation**
+* **Code Documentation**
+* **Pipeline Sanity Checks**
+
+## Project Status
+
+**Proof of Concept (POC)**
