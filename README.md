@@ -1,72 +1,236 @@
 # E-Commerce Real-Time GCP Data Pipeline
 
-End-to-end e-commerce data pipeline built using Google Cloud Platform (GCP).
+An end-to-end e-commerce data pipeline built using Google Cloud Platform (GCP).
 
-> This project uses **Dataproc Serverless with PySpark** for data transformation and does not use Google Cloud Dataflow.
+The pipeline demonstrates event-driven data ingestion, cloud storage, PySpark-based data transformation, operational data storage, federated analytics, workflow orchestration, and data quality validation.
+
+> **Note:** This project uses **Dataproc Serverless with PySpark** for data transformation. It does **not** use Google Cloud Dataflow.
+
+---
 
 ## GCP Services Used
 
-* **Google Cloud Pub/Sub** — streaming order ingestion
+* **Google Cloud Pub/Sub** — Event-driven order ingestion
 * **Google Cloud Storage (GCS)** — Bronze and Silver data layers
-* **Dataproc Serverless** — PySpark transformation
-* **Cloud Spanner** — operational data storage
+* **Dataproc Serverless** — Serverless PySpark data transformation
+* **Cloud Spanner** — Operational data storage
 * **BigQuery** — Gold analytics and federated querying
-* **BigQuery Spanner External Connection** — Spanner-to-BigQuery federation
-* **Cloud Composer / Apache Airflow** — workflow orchestration
+* **BigQuery Spanner External Connection** — Federated access to Cloud Spanner
+* **Cloud Composer / Apache Airflow** — Workflow orchestration
+
+---
 
 ## Architecture
 
 ```text
-E-Commerce Events
-       ↓
-Python Publisher
-       ↓
-Google Cloud Pub/Sub
-       ↓
-GCS Bronze - Raw JSON
-       ↓
-Cloud Composer / Airflow
-       ↓
-Dataproc Serverless + PySpark
-       ↓
-   ┌───┴────────────┐
-   ↓                ↓
-GCS Silver      Cloud Spanner
-  Parquet        Transactions
-                    ↓
-                 BigQuery
-              EXTERNAL_QUERY
-                    ↓
-              Gold Analytics
+                         E-Commerce Events
+                                │
+                                ▼
+                        Python Publisher
+                                │
+                                ▼
+                     Google Cloud Pub/Sub
+                                │
+                                ▼
+                         GCS Bronze
+                          Raw JSON
+                                │
+                                ▼
+                    Cloud Composer / Airflow
+                                │
+                                ▼
+                    Dataproc Serverless
+                         PySpark
+                                │
+                       ┌────────┴────────┐
+                       │                 │
+                       ▼                 ▼
+                  GCS Silver        Cloud Spanner
+                   Parquet          Operational Data
+                                         │
+                                         ▼
+                                    BigQuery
+                               External Connection
+                                         │
+                                         ▼
+                                   EXTERNAL_QUERY
+                                         │
+                                         ▼
+                                  Gold Analytics
 ```
+
+Cloud Composer orchestrates the pipeline by triggering the Dataproc Serverless PySpark processing job.
+
+PySpark transforms and deduplicates the raw e-commerce data and writes the processed records to the GCS Silver layer and Cloud Spanner.
+
+BigQuery accesses Cloud Spanner through the configured external connection and performs analytical processing.
+
+---
 
 ## Pipeline Flow
 
-1. Generate e-commerce order events using Python.
-2. Publish events to Google Cloud Pub/Sub.
-3. Store raw JSON data in the GCS Bronze layer.
-4. Airflow triggers the Dataproc Serverless PySpark job.
-5. PySpark cleans, transforms, and deduplicates the data.
-6. Store processed data as Parquet in the GCS Silver layer.
-7. Write transactional data to Cloud Spanner.
-8. BigQuery reads Cloud Spanner using `EXTERNAL_QUERY`.
-9. Generate product-level analytics in the Gold layer.
-10. Run sanity checks to validate the pipeline.
+1. Python generates e-commerce order events.
+2. Events are published to Google Cloud Pub/Sub.
+3. Raw event data is stored in the GCS Bronze layer as JSON.
+4. Cloud Composer / Apache Airflow orchestrates the processing workflow.
+5. Airflow triggers the Dataproc Serverless PySpark job.
+6. PySpark reads the raw data from the Bronze layer.
+7. PySpark cleans, transforms, and deduplicates the data.
+8. Processed data is stored as Parquet in the GCS Silver layer.
+9. Processed transactional records are written to Cloud Spanner.
+10. BigQuery accesses Cloud Spanner through the Spanner external connection.
+11. `EXTERNAL_QUERY` is used to query the operational data from BigQuery.
+12. Product-level analytical metrics are generated in the Gold layer.
+13. Sanity checks validate data quality and pipeline results.
+
+---
+
+## Data Architecture
+
+### 🥉 Bronze — Raw Data
+
+The Bronze layer stores the raw e-commerce events received from Pub/Sub.
+
+```text
+Pub/Sub
+   │
+   ▼
+GCS Bronze
+   │
+   ▼
+Raw JSON
+```
+
+**Purpose:**
+
+* Preserve raw event data
+* Maintain the original JSON structure
+* Provide a source layer for downstream processing
+
+---
+
+### 🥈 Silver — Curated Data
+
+The Silver layer contains processed and deduplicated data generated by the PySpark transformation.
+
+```text
+GCS Bronze
+   │
+   ▼
+Dataproc Serverless
+   │
+   ▼
+PySpark
+   │
+   ├── Data Cleaning
+   ├── Data Transformation
+   └── Deduplication
+   │
+   ▼
+GCS Silver
+   │
+   ▼
+Parquet
+```
+
+**Purpose:**
+
+* Clean raw data
+* Transform the source structure
+* Remove duplicate records
+* Store processed data in Parquet format
+
+---
+
+### ⚙️ Operational Data — Cloud Spanner
+
+Processed transactional data is stored in Cloud Spanner.
+
+```text
+PySpark
+   │
+   ▼
+Cloud Spanner
+   │
+   ▼
+Operational Tables
+```
+
+Cloud Spanner provides the operational data store used by the analytical layer.
+
+---
+
+### 🥇 Gold — Analytics
+
+BigQuery accesses Cloud Spanner through a Spanner external connection.
+
+```text
+Cloud Spanner
+      │
+      ▼
+BigQuery External Connection
+      │
+      ▼
+EXTERNAL_QUERY
+      │
+      ▼
+Product Aggregation
+      │
+      ▼
+Gold Analytics
+```
+
+The Gold layer contains the analytical results generated from the operational data.
+
+---
 
 ## Data Quality Checks
 
-The project includes checks for:
+The project includes sanity checks to validate the pipeline and processed data.
 
-* Data volume
-* Data completeness
-* Schema integrity
-* Data types
-* Deduplication
-* Idempotency
-* Business reconciliation
-* Data freshness
-* Cloud Spanner validation
-* BigQuery federated query validation
+### Data Volume
+
+Validates expected record counts and data volumes across pipeline stages.
+
+### Data Completeness
+
+Checks for missing or incomplete records.
+
+### Schema Integrity
+
+Validates that the processed data follows the expected structure.
+
+### Data Type Validation
+
+Validates the expected data types of processed fields.
+
+### Deduplication
+
+Checks for duplicate records introduced during data processing.
+
+### Idempotency
+
+Validates that repeated pipeline execution does not incorrectly create duplicate business records.
+
+### Business Reconciliation
+
+Compares relevant records and metrics between processing stages to identify inconsistencies.
+
+### Data Freshness
+
+Validates that the latest processed data is within the expected time window.
+
+### Cloud Spanner Validation
+
+Validates processed records and expected data in Cloud Spanner.
+
+### BigQuery Federated Query Validation
+
+Validates connectivity and query results between BigQuery and Cloud Spanner using the external connection.
+
+These checks help identify missing records, duplicates, invalid data, reconciliation issues, stale data, and federation-related problems.
+
+---
 
 ## Repository Structure
 
@@ -86,10 +250,13 @@ gcp-realtime-ecommerce-data-pipeline/
 │   └── 03-sanity-checks.docx
 │
 ├── src/
+│   │
 │   ├── publisher/
 │   │   └── publisher.py
+│   │
 │   ├── pyspark/
 │   │   └── clean_ecom.py
+│   │
 │   └── airflow/
 │       └── ecom_pipeline_dag.py
 │
@@ -102,43 +269,130 @@ gcp-realtime-ecommerce-data-pipeline/
     └── sanity_checks.sql
 ```
 
+---
+
 ## Project Execution Order
 
-1. Set up the required GCP services and IAM permissions.
-2. Configure Pub/Sub and GCS Bronze storage.
-3. Create the Cloud Spanner database and table.
-4. Run the Python publisher.
-5. Deploy and run the PySpark transformation.
-6. Configure Cloud Composer and deploy the Airflow DAG.
-7. Configure the BigQuery-Spanner external connection.
-8. Run the BigQuery aggregation.
-9. Run the sanity checks.
+```text
+1. Set up required GCP services and IAM permissions
+                         ↓
+2. Create GCS Bronze and Silver storage
+                         ↓
+3. Configure Pub/Sub topic and subscription
+                         ↓
+4. Create Cloud Spanner instance, database, and tables
+                         ↓
+5. Run the Python Publisher
+                         ↓
+6. Verify raw events in GCS Bronze
+                         ↓
+7. Configure Cloud Composer / Airflow
+                         ↓
+8. Deploy the Airflow DAG
+                         ↓
+9. Trigger Dataproc Serverless + PySpark
+                         ↓
+10. Verify processed data in GCS Silver
+                         ↓
+11. Verify processed records in Cloud Spanner
+                         ↓
+12. Configure the BigQuery-Spanner external connection
+                         ↓
+13. Create the BigQuery analytics dataset/table
+                         ↓
+14. Run the BigQuery aggregation
+                         ↓
+15. Run verification queries and sanity checks
+```
+
+---
 
 ## Project Configuration
 
-The values used in the project documentation are:
+The following values represent the POC environment configuration:
 
 ```text
 GCP Project ID       : snappy-mapper-498509-e0
+Region               : asia-south1
+
 GCS Bucket            : pub-sub-dag-rawdata
+
 Pub/Sub Topic         : ecom-orders-topic
+
 Spanner Instance      : ecom-spanner-instance
 Spanner Database      : ecom-db
+
 BigQuery Dataset      : ecom_analytics2
+
 Spanner Connection    : spanner-ecom-conn
+
 Composer Environment  : ecom-composer-env
 ```
 
-> **Note:** These values are based on the project documentation and represent the POC environment. If publishing this repository publicly, replace environment-specific values with placeholders and do not commit credentials, service-account keys, API keys, or passwords.
+> **Note:** These are environment-specific POC values. If publishing this repository publicly, replace project-specific resource names with placeholders where appropriate.
+
+---
+
+## Security
+
+Do not commit sensitive credentials or secrets to GitHub.
+
+Never commit:
+
+```text
+Service account private keys
+API keys
+Passwords
+Credentials
+.env files
+Secret files
+```
+
+Use Google Cloud IAM and follow the principle of least privilege when assigning permissions to Pub/Sub, GCS, Dataproc, Cloud Composer, Cloud Spanner, and BigQuery.
+
+Sensitive configuration should be provided through secure configuration or secret-management mechanisms rather than being hard-coded in source code.
+
+---
 
 ## Documentation
 
-Detailed project documentation is available in the `docs/` folder:
+Detailed project documentation is available in the `docs/` directory:
 
-* **Architecture & Implementation**
-* **Code Documentation**
-* **Pipeline Sanity Checks**
+* **Architecture & Implementation** — GCP architecture, services, data flow, and project setup
+* **Code Documentation** — Python publisher, PySpark transformation, Airflow DAG, SQL, and IAM configuration
+* **Pipeline Sanity Checks** — Data validation, reconciliation, and pipeline verification
+
+---
+
+## Key Technical Concepts
+
+* Event-driven architecture
+* Real-time event ingestion
+* Google Cloud Pub/Sub
+* Google Cloud Storage
+* Bronze / Silver data layers
+* Dataproc Serverless
+* PySpark
+* JSON processing
+* Parquet
+* Data transformation
+* Data deduplication
+* Cloud Spanner
+* BigQuery federation
+* BigQuery external connections
+* `EXTERNAL_QUERY`
+* Cloud Composer
+* Apache Airflow
+* Workflow orchestration
+* Data reconciliation
+* Idempotency
+* Data quality validation
+* Serverless data processing
+
+---
 
 ## Project Status
 
 **Proof of Concept (POC)**
+
+This project demonstrates an event-driven e-commerce data pipeline on Google Cloud Platform using Pub/Sub, Cloud Storage, Dataproc Serverless with PySpark, Cloud Spanner, BigQuery, and Cloud Composer with Apache Airflow.
